@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# Modified for use with LTSP by Joshua Trimm <enslaver@enslaver.com>
+#
+
+# Copyright (C) 2010-2012 by X2Go project, http://wiki.x2go.org
+#       Oleksandr Shneyder <oleksandr.shneyder@obviously-nice.de>
+#       Moritz 'Morty' Struebe <Moritz.Struebe@informatik.uni-erlangen.de>
+#       Mike Gabriel <mike.gabriel@das-netzwerkteam.de>
+
+# X2Go is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# X2Go is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+
+[ ! -x /usr/bin/x2goclient ] && echo You must install x2goclient in the chroot
+
+if ! `getent passwd |grep -q "^x2goclient:" >/dev/null` ; then
+/usr/sbin/useradd x2goclient -r -d /tmp/x2goclient
+mkdir -p /tmp/x2goclient
+mkdir -p /tmp/x2goclient/.x2goclient
+
+#TODO: have this built by lts.conf
+test -e /usr/share/ltsp/x2gothinclient_sessions && cp /usr/share/ltsp/x2gothinclient_sessions /tmp/x2goclient/.x2goclient/sessions
+
+mkdir -p /tmp/x2goclient/.kde
+mkdir -p /tmp/x2goclient/.kde/socket-`cat /etc/hostname`
+mkdir -p /tmp/x2goclient/export
+mkdir -p  /tmp/x2goclient/logins
+mkdir -p /tmp/x2goclient/.ssh
+cp -a /etc/ssh/ssh_known_hosts /tmp/x2goclient/.ssh
+mkdir -p /tmp/x2goclient/.x2go
+chown x2goclient:x2goclient /tmp/x2goclient -Rf
+chmod go-rwx /tmp/x2goclient -Rf
+fi
+
+su - x2goclient -c 'DISPLAY=$DISPLAY bash -c \"/usr/bin/x2goclient --no-menu \
+                    --maximize \
+                    --link=lan \
+#TODO: add keyboard support from lts.conf
+                   # --kbd-layout=us \
+                   # --kbd-type=pc104/us \
+                   # --set-kbd=1 \
+                    --geometry=fullscreen \
+                    --thinclient \
+                    --haltbt \
+                    --read-exports-from=/tmp/x2goclient/export \
+                    --background=/usr/share/ltsp/background.svg \
+                    --no-session-edit \
+                    --session=X2Go.Example \
+                    --add-to-known-hosts \"'

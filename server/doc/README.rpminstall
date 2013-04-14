@@ -1,0 +1,44 @@
+This is install instructions for the RPM version of the ltsp package.
+Please run all commands as root or using sudo command
+
+On your LTSP server you must have epel-release repo's setup from http://fedoraproject.org/wiki/EPEL
+
+Then you can install the LTSP repo using this command:
+rpm --import http://mirror.ancl.hawaii.edu/~k12linux/rpm/RPM-GPG-KEY-ltsp
+rpm -Uvh http://mirror.ancl.hawaii.edu/~k12linux/rpm/ltsp-release-5.noarch.rpm
+
+To install the server simply run:
+yum install ltsp-server
+
+FEDORA 18+ NOTE: Fedora now uses systemctl instead of init.d, so to control these services you would use: systemctl stop SERVICENAME ; systemctl disable SERVICENAME
+
+NOTE: Steps 1-5 here can be bypassed by editing /etc/ltsp/ltsp-server.conf changing the LTSP_DEV and LTSP_DEFAULTIP then running:  ltsp-server-initialize
+
+There are a few things you must do to prepare for the client to boot
+
+1. Disable selinux by editing /etc/sysconfig/selinux and change SELINUX=permissive
+2. Temporarily disable iptables by running: /etc/init.d/iptables stop ; /sbin/chkconfig iptables off
+   NOTE: you may choose to reconfigure iptables later to add services such as nfs, tftp, dhcpd, named and others that we use
+
+For configurations with 2 NIC's with setups such as eth0 - internet & eth1 - internal network (preferred method)
+
+3. Disable NetworkManager
+   /sbin/chkconfig NetworkManager off
+   /sbin/chkconfig network on
+   /sbin/service NetworkManager stop && /sbin/service network restart
+   Make sure the network configuration files in /etc/sysconfig/network-scripts/ifcfg-eth* have "NM_CONTROLLED=no" AND has "ONBOOT=yes".
+4. Configure eth1 to an internal IP for the terminals, the default we recommend is 192.168.67.1
+5. Reboot or restart services ltsp-dhcpd xinetd nfs 
+
+For configurations with 1 NIC and no other dhcpd server on the network
+
+3. Edit /etc/ltsp/dhcpd.conf and change that to your network settings, then restart dhcpd
+4. Change LTSP_DEV in /etc/ltsp/ltsp-server.conf to be your main NIC
+
+BUILDING THE CLIENT
+
+1. Look at /etc/ltsp/ltsp-server.conf
+1. ltsp-build-client --extra-help
+   This will give you the options you can pass to the program that builds the chroot for the client
+2. If you'd like to go with the recommended defaults simply run: ltsp-build-client
+3. To setup services just run: ltsp-server-initialize

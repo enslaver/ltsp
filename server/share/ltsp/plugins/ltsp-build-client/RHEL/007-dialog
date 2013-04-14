@@ -1,0 +1,24 @@
+case "$MODE" in
+    commandline)
+        add_option "noprogress" "`eval_gettext "Turns off graphical progress bar"`" "advanced" "false"
+    ;;
+    configure)
+        #ltspbashgui_debug_mode="YES"
+        supermode="dialog"
+        source ltspbashgui >/dev/null 2>&1
+        > /tmp/progress.build
+    ;;
+    
+    install)
+        PCT=0
+	show_percent() {
+           [ $PCT -gt 100 ] && PCT=99
+           if [ -n "$option_noprogress_value" ]; then
+              progress() { echo; }
+           fi
+           echo PROGRESS >> /tmp/progress.build
+           echo $PCT | progress "Building LTSP client"
+           #wait_for "LTSP client installation"
+        }
+    ;;
+esac

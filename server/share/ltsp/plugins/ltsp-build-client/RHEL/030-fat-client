@@ -1,0 +1,33 @@
+case "$MODE" in
+    commandline)
+        # Add a command line switch to ltsp-build-client that installs desktop
+        # yum groups so that diskless workstations can everything locally
+        add_option "fat-client" "`eval_gettext "run most or all applications locally"`" "advanced" "false"
+    ;;
+
+    configure)
+        if [ "true" = "$option_fat_client_value" ]; then
+            export FAT_CLIENT=True
+        else
+            # If fat client isn't enabled, just continue
+            return 0
+        fi
+    ;;
+
+    after-install)
+        if [ ! "$FAT_CLIENT" ]; then
+           return 0
+        fi
+
+        if [ -f "/etc/ltsp/mock/fat-groups.list" ]; then
+           # Install the packages
+           while read line; do
+           MOCK_CMD --install \@\'$line\'
+           done < /etc/ltsp/mock/fat-groups.list
+           MOCK_CMD --chroot rm /var/lib/rpm/__db*
+           MOCK_CMD --remove NetworkManager PackageKit gdm
+           MOCK_CMD --chroot yum reinstall ldm ltsp-client
+           return 0
+        fi
+    ;;
+esac

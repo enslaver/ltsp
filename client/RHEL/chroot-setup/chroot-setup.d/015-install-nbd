@@ -1,0 +1,8 @@
+#!/bin/bash
+KERN_DIR=$(find /lib/modules/ -maxdepth 1 -type d -name 2.* |tail -1)
+if [ -d "$KERN_DIR" ]; then
+   [ `echo $KERN_DIR | grep x86_64` ] && cp /usr/share/ltsp/template/nbd.ko.x86_64 $KERN_DIR/kernel/drivers/block/nbd.ko
+   [ `echo $KERN_DIR | grep i686` ] && cp /usr/share/ltsp/template/nbd.ko.i686 $KERN_DIR/kernel/drivers/block/nbd.ko
+fi
+current_kernel=$(basename $KERN_DIR)
+depmod -ae -F /boot/System.map-${current_kernel} ${current_kernel}

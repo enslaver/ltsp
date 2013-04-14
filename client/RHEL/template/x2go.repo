@@ -1,0 +1,7 @@
+[X11_RemoteDesktop_x2go]
+name=X2go - after NoMachine ditched the open version (RHEL_6)
+type=rpm-md
+baseurl=http://download.opensuse.org/repositories/X11:/RemoteDesktop:/x2go/RHEL_6/
+gpgcheck=1
+gpgkey=http://download.opensuse.org/repositories/X11:/RemoteDesktop:/x2go/RHEL_6/repodata/repomd.xml.key
+enabled=1

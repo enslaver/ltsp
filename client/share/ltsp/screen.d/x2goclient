@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Screen script that launches x2goclient. Can be called from lts.conf
+# like this:
+#   SCREEN_07="x2goclient"
+#
+# Copyright (c) 2013 Joshua Trimm <enslaver@enslaver.com>
+#
+# This software is licensed under the GNU General Public License version 2,
+# the full text of which can be found in the COPYING file.
+
+. /usr/share/ltsp/screen-x-common
+export HOME=${HOME:-/root}
+
+# Make XINITRC_DAEMON default to "True", to prevent X from restarting after
+# logout. If you don't want that, force XINITRC_DAEMON=False in lts.conf.
+export XINITRC_DAEMON="${XINITRC_DAEMON-True}"
+
+. /usr/share/ltsp/x2gothinclient_init
+
+#COMMAND="/usr/bin/x2goclient" 
+#ARGS="--no-menu --maximize --link=lan --geometry=fullscreen \
+#--thinclient --haltbt --read-exports-from=/usr/share/ltsp/x2goclient/export \
+#--background=/usr/share/ltsp/background.svg --no-session-edit \
+#--session=X2Go.Example --add-to-known-hosts"
+
+# The following logic is described at the top of xinitrc.
+if [ -x /usr/share/ltsp/xinitrc ]; then
+    exec xinit /usr/share/ltsp/xinitrc "/usr/share/ltsp/x2gothinclient_start" -- "$DISPLAY" "vt${TTY}" $X_ARGS >/dev/null
+fi

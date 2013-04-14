@@ -1,0 +1,17 @@
+case "$MODE" in
+    install)
+	ok_message "
+	This script takes a long time to complete, it will
+	download a complete operating system for the client, based
+	on the distro type of this current system and install it 
+	into:
+	
+	Destination: $ROOT
+	ARCH: $ARCH
+	
+	To view the details of the install while its running you can
+	tail -f $BASE/mock/$ARCH/result/root.log
+
+	Press enter to continue or Ctrl-C to abort"
+    ;;
+esac

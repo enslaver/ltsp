@@ -1,0 +1,129 @@
+#!/bin/sh
+
+# copyright 2009 Vagrant Cascadian <vagrant@freegeek.org>,
+# 2010 Alkis Georgopoulos <alkisg@gmail.com>,
+# 2011 Wim Muskee <wimmuskee@gmail.com>, distributed under the
+# terms of the GNU General Public License version 2 or any later version.
+
+# generic functions
+
+usage() {
+cat <<EOF
+Usage: $0 [OPTION] command
+
+Chroots into a specified LTSP chroot. Optional arguments can be provided to customize
+the chroot location as well as extra mounts. If present, default arguments will be read
+from the configuration file /etc/ltsp/ltsp-chroot.conf, and overwritten with used
+command line options.
+
+Options:
+  -a, --arch[=ARCH]             Sets the architecture of the target chroot. Defaults vary by distribution.
+  -b, --base[=PATH]             Sets base of target chroot. Defaults to /opt/ltsp if unspecified.
+  -c, --mount-package-cache     If set, mounts the server package directories to the chroot previous
+                                to chrooting. Settings vary by distribution.
+  -d, --mount-dev               If set, mounts the server dev and devpts directories to the chroot
+                                previous to chrooting.
+  -h, --help                    Displays the ltsp-chroot help message.
+  -p, --mount-proc              If set, mounts the server /proc to the chroot previous to chrooting.
+  -m, --mount-all               If set, mounts the /proc, /dev and package directories to the chroot
+                                before chrooting.
+  -r, --copy-resolv-conf        If set, copies the server resolv.conf to the chroot previous to chrooting.
+EOF
+}
+
+default_options() {
+    if [ -n "$ROOT" ]; then
+        # If $ROOT contains a terminating /, remove it
+        ROOT=${ROOT%/}
+        # Extract $BASE and $ARCH from $ROOT in case they're needed afterwards
+        BASE=${ROOT%/*}
+        ARCH=${ROOT##*/}
+    else
+        BASE=${BASE:-/opt/ltsp}
+        # If $BASE contains a terminating /, remove it
+        BASE=${BASE%/}
+        if [ -z "$ARCH" ]; then
+            # Prefer the chroot that corresponds to the server arch,
+            # but if that doesn't exist, use the first one available.
+            ARCH=$(detect_arch)
+
+            if [ ! -d "$BASE/$ARCH" ]; then
+                for ARCH in $(find "$BASE/" -mindepth 1 -maxdepth 1 -type d ! -name images -printf "%f\n"); do
+                    test -x "$BASE/$ARCH/bin/true" && break
+                done
+            fi
+        fi
+        ROOT="$BASE/$ARCH"
+    fi
+}
+
+pre_chroot() {
+    test -d "$ROOT" || die "ERROR: ltsp chroot not found: $ROOT"
+
+    if boolean_is_true "$MOUNT_ALL"; then
+        MOUNT_PACKAGE_CACHE=true
+        MOUNT_DEV=true
+        MOUNT_PROC=true
+    fi
+    if boolean_is_true "$MOUNT_PACKAGE_CACHE"; then
+        mount_package_cache
+    fi
+    if boolean_is_true "$MOUNT_DEV"; then
+        mark_mount --bind "/dev" "$ROOT/dev"
+        mark_mount -t devpts -o rw,noexec,nosuid,gid=5,mode=620 devpts "$ROOT/dev/pts"
+    fi
+    if boolean_is_true "$MOUNT_PROC"; then
+        mark_mount -t proc proc "$ROOT/proc"
+    fi
+    if boolean_is_true "$COPY_RESOLV_CONF"; then
+        cp /etc/resolv.conf "$ROOT/etc/"
+    fi
+}
+
+post_chroot() {
+    # Stop trapping
+    trap - 0 HUP INT QUIT KILL SEGV PIPE TERM
+    umount_marked
+}
+
+# distro specific functions
+mount_package_cache() {
+    echo "Mounting the package cache is not available for your distribution."
+}
+
+# Set an optional MODULES_BASE, so help2man can be called from build env
+MODULES_BASE=${MODULES_BASE:-/usr/share/ltsp}
+
+# This also sources vendor functions and .conf file settings
+. ${MODULES_BASE}/ltsp-server-functions
+
+# The command line parameters override the configuration file settings
+if ! args=$(getopt -n "$0" -o +a:b:cdhmpr -l \
+    'arch:,base:,mount-package-cache,mount-dev,help,mount-all,mount-proc,copy-resolv-conf' -- "$@"); then
+    exit 1
+fi
+eval "set -- $args"
+while true; do
+    case "$1" in
+        -a|--arch) shift; ARCH=$1 ;;
+        -b|--base) shift; BASE=$1 ;;
+        -c|--mount-package-cache) MOUNT_PACKAGE_CACHE=true ;;
+        -d|--mount-dev) MOUNT_DEV=true ;;
+        -h|--help) usage; exit 0 ;;
+        -m|--mount-all) MOUNT_ALL=true ;;
+        -p|--mount-proc) MOUNT_PROC=true ;;
+        -r|--copy-resolv-conf) COPY_RESOLV_CONF=true ;;
+        --) shift; break ;;
+        *) die "$0: Internal error!" ;;
+    esac
+    shift
+done
+
+# Finally, fall back to using default values for any unset options
+default_options
+
+require_root
+
+trap "post_chroot" 0 HUP INT QUIT KILL SEGV PIPE TERM
+pre_chroot
+LTSP_HANDLE_DAEMONS=false chroot "$ROOT" "$@"

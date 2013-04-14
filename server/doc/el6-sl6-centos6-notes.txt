@@ -1,0 +1,317 @@
+Downloaded from http://optiportal.org/index.php/Main_Page#What_is_an_OptIPortal
+It has some good notes on setting up any EL6 server and a lot of it apply's to LTSP
+
+Contents
+
+     * [5]1 kernel panics
+     * [6]2 blacklist nouveau
+     * [7]3 Disable selinux:
+     * [8]4 Disable NetworkManager:
+     * [9]5 Changing interface names
+     * [10]6 Remove autoupdate:
+     * [11]7 Repos Additions: Add EPEL and RPMForge Repos:
+     * [12]8 Disable Multi-user Login Screen:
+     * [13]9 Autologin:
+     * [14]10 NFSv4
+     * [15]11 setup NFS server
+     * [16]12 nfs mount catchup on client
+     * [17]13 misc ssh
+          + [18]13.1 disable dns check
+     * [19]14 generate authorized_keys
+     * [20]15 10Gb Tuning
+     * [21]16 Network Bandwidth Tools
+
+kernel panics
+
+   At installation, with known good hardware, this almost always due to
+   nouveau Use failsafe options when installing from media.
+     * add rdblacklist=nouveau to the end of your kernel line in
+       /boot/grub/menu.lst
+
+blacklist nouveau
+
+     * add rdblacklist=nouveau to the end of your kernel line in
+       /boot/grub/menu.lst
+     * create: /etc/modprobe.d/nvidia-installer-disable-nouveau.conf
+          + add:
+               o blacklist nouveau
+               o options nouveau modeset=0
+
+   Note: the nvidia driver installation will often create the
+   nvidia-installer-disable-nouveau.conf for you
+
+Disable selinux:
+
+   vi /etc/selinux/config set line: SELINUX=disabled
+
+Disable NetworkManager:
+
+   Network: chkconfig NetworkManager off make appropriate changes to
+   /etc/sys*/net*s/ifc*eth* files, specifially NM_CONTROLLED=no Note: if
+   working remotely, you will have to be careful to time the mods
+   accordingly
+
+Changing interface names
+
+   Post installation, if you want to change interface labels, for example,
+   eth1 to eth2: 1. edit /etc/udev/rules.d/70-persistent-net.rules: change
+   the mac address entries to match your new interface lables 2. edit
+   /etc/sysconfig/network-scripts/ifcfg*eth1(2) and change labels
+   accordingly 3. reboot
+
+Remove autoupdate:
+
+   yum remove yum-autoupdate
+
+Repos Additions: Add EPEL and RPMForge Repos:
+
+   EPEL: wget
+   [22]http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-5.
+   noarch.rpm yum -y --nogpgcheck localinstall epel*
+
+   RPMForge: wget
+   [23]http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.2-2.el6
+   .rf.x86_64.rpm yum -y --nogpgcheck localinstall rpmfo* rpm --import
+   [24]http://apt.sw.be/RPM-GPG-KEY.dag.txt
+
+   isable Gnome Notifications: gconftool-2 -s
+   /apps/panel/global/tooltips_enabled --type bool false
+
+Disable Multi-user Login Screen:
+
+   gconftool-2 --direct --config-source
+   xml:readwrite:/etc/gconf/gconf.xml.mandatory --type Boolean --set
+   /apps/gdm/simple-greeter/disable_user_list True
+
+Autologin:
+
+   edit /etc/gdm/custom.conf add the following to daemon section:
+
+   TimedLoginEnable=True TimedLogin=bstoops TimedLoginDelay=5
+
+NFSv4
+
+   NOTE: (if you are seeing nobody user/group when local uid/gid exists
+   check the following):
+     * more robustly: modify /etc/idmapd.conf and force domain to local
+     * alternate (and in some cases necessary) method
+          + be sure to "domain local" in /etc/resolv.conf, then "chattr +i
+            /etc/resolv.conf" to disallow changes
+          + example:
+
+     *
+          +
+               o domain local
+               o search local
+               o nameserver #.#.#.#
+               o nameserver #.#.#.#
+
+setup NFS server
+
+   server:
+   yum -y install nfs-utils rpcbind
+   chkconfig nfs on
+   chkconfig rpcbind on
+   chkconfig nfslock on
+   service rpcbind start
+   service nfs start
+   service nfslock start
+   edit /etc/exports as needed
+
+nfs mount catchup on client
+
+   add the following to /etc/init.d/netfs on the client to wait for mounts
+   to complete
+
+   [ ! -f /var/lock/subsys/rpcbind ] && service rpcbind start
+   action $"Sleeping for 30 secs: " sleep 30
+   action $"Mounting NFS filesystems: " mount -a -t nfs,nfs4
+
+misc ssh
+
+disable dns check
+
+   modify /etc/ssh/sshd_config UseDNS no
+
+generate authorized_keys
+
+   generate keys ssh-keygen -t dsa cd `/.ssh; cp id_dsa.pub
+   authorized_keys
+
+10Gb Tuning
+
+     1. Enable Jumbo Frames on all interfaces (if supported) to 9000
+     bytes.
+     ifconfig ethX mtu 9000
+     2. Set the Transmit Queue Length (txqlength) on the interface to
+     10,000:
+     ifconfig ethX txqueuelength 10000
+     3. Enable Large TCP windows:
+     /etc/sysctl.conf settings faster TCP
+     : # Set maximum TCP window sizes to 140 megabytes
+     net.core.rmem_max = 139810133
+     net.core.wmem_max = 139810133
+     # Set minimum, default, and maximum TCP buffer limits
+     net.ipv4.tcp_rmem = 4096 524288 139810133
+     net.ipv4.tcp_wmem = 4096 524288 139810133
+     # Set maximum network input buffer queue length
+     net.core.netdev_max_backlog = 30000
+     # Disable caching of TCP congestion state (2.6 only) *Fixes a bug in
+     some Linux stacks.
+     net.ipv4.tcp_no_metrics_save = 1
+     # Ignore ARP requests for local IP received on wrong interface
+     net.ipv4.conf.all.arp_ignore = 1
+     # Use the BIC TCP congestion control algorithm instead of TCP Reno,
+     2.6.8 to 2.6.18
+     net.ipv4.tcp_congestion_control = bic
+     # Use the CUBIC TCP congestion control algorithm instead of TCP
+     Reno, 2.6.18+
+     # net.ipv4.tcp_congestion_control = cubic
+     A reboot will be needed for changes to /etc/sysctl.conf to take
+     affect.
+     4. Set Loadable Kernel Module Interface specific settings:
+     The following is applicable to Linux network interface cards,
+     specifically for 10 gigabit/s cards. For optimal performance, most
+     of these parameters will need to be set, but various vendors may
+     implement similar options with different syntax or variables.
+     See driver instructions for vendor specific parameters. These values
+     may need to be adjusted for optimal performance, but the values
+     listed below are know to increase the performance of an Intel-based
+     10Gig PCI-X card. Other PCI bus parameters may need to be adjusted.
+     TCP Offload:
+     Linux 2.6.11 and under has a serious problem with certain Gigabit
+     and 10 Gig ethernet drivers and NICs that support "tcp segmentation
+     offload", such as the Intel e1000 and ixgb drivers, the Broadcom
+     tg3, and the s2io 10 GigE drivers. This problem was fixed in version
+     2.6.12. A workaround for this problem is to use ethtool to disable
+     segmentation offload:
+     ethtool -K eth0 tso off
+     Other EthTool settings:
+     RX Offload IP CRC Checking=on
+     TX Offload IP CRC Checking=on
+     RX Offload TCP CRC Checking=OFF
+     TX Offload TCP CRC Checking=OFF
+     Flow Control=OFF
+     Module options (set at module load):
+     Flow Control=OFF
+     Allocated Receive Descriptors=2048
+     Allocated Transit Descriptors=2048
+     Receive Interrupt Delay=0
+     Transmit Interrupt Delay=0
+     PCI Parameters (set with setpci command):
+     MMRBC to 4k reads
+
+Network Bandwidth Tools
+
+   iperf and nuttcp can be used effectively, we generally prefer nuttcp:
+   download nuttcp: wget
+   [25]http://lcp.nrl.navy.mil/nuttcp/nuttcp-6.1.2.tar.bz2
+   Invocation: Server: nuttcp -S Client: ./nuttcp -i5 -T20 -v -t <host>
+   Retrieved from
+   "[26]http://optiportal.org/index.php?title=EL6:_SL_6.x,_CentOS_6.x&oldi
+   d=97"
+
+Personal tools
+
+     * [27]Log in
+
+Namespaces
+
+     * [28]Page
+     * [29]Discussion
+
+Variants
+
+Views
+
+     * [30]Read
+     * [31]View source
+     * [32]View history
+
+Actions
+
+Search
+
+   ____________________ Go Search
+
+Navigation
+
+     * [33]Main page
+     * [34]Community portal
+     * [35]Current events
+     * [36]Recent changes
+     * [37]Random page
+     * [38]Help
+
+Toolbox
+
+     * [39]What links here
+     * [40]Related changes
+     * [41]Special pages
+     * [42]Printable version
+     * [43]Permanent link
+
+     * This page was last modified on 9 May 2012, at 15:12.
+     * This page has been accessed 2,005 times.
+
+     * [44]Privacy policy
+     * [45]About Optiportals
+     * [46]Disclaimers
+
+     * [47]Powered by MediaWiki
+
+References
+
+   Visible links
+   1. http://optiportal.org/opensearch_desc.php
+   2. http://optiportal.org/index.php?title=Special:RecentChanges&feed=atom
+   3. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#mw-head
+   4. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#p-search
+   5. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#kernel_panics
+   6. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#blacklist_nouveau
+   7. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#Disable_selinux:
+   8. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#Disable_NetworkManager:
+   9. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#Changing_interface_names
+  10. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#Remove_autoupdate:
+  11. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#Repos_Additions:_Add_EPEL_and_RPMForge_Repos:
+  12. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#Disable_Multi-user_Login_Screen:
+  13. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#Autologin:
+  14. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#NFSv4
+  15. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#setup_NFS_server
+  16. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#nfs_mount_catchup_on_client
+  17. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#misc_ssh
+  18. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#disable_dns_check
+  19. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#generate_authorized_keys
+  20. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#10Gb_Tuning
+  21. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x#Network_Bandwidth_Tools
+  22. http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-5.noarch.rpm
+  23. http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
+  24. http://apt.sw.be/RPM-GPG-KEY.dag.txt
+  25. http://lcp.nrl.navy.mil/nuttcp/nuttcp-6.1.2.tar.bz2
+  26. http://optiportal.org/index.php?title=EL6:_SL_6.x,_CentOS_6.x&oldid=97
+  27. http://optiportal.org/index.php?title=Special:UserLogin&returnto=EL6%3A+SL+6.x%2C+CentOS+6.x
+  28. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x
+  29. http://optiportal.org/index.php?title=Talk:EL6:_SL_6.x,_CentOS_6.x&action=edit&redlink=1
+  30. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x
+  31. http://optiportal.org/index.php?title=EL6:_SL_6.x,_CentOS_6.x&action=edit
+  32. http://optiportal.org/index.php?title=EL6:_SL_6.x,_CentOS_6.x&action=history
+  33. http://optiportal.org/index.php/Main_Page
+  34. http://optiportal.org/index.php/Optiportals:Community_portal
+  35. http://optiportal.org/index.php/Optiportals:Current_events
+  36. http://optiportal.org/index.php/Special:RecentChanges
+  37. http://optiportal.org/index.php/Special:Random
+  38. http://optiportal.org/index.php/Help:Contents
+  39. http://optiportal.org/index.php/Special:WhatLinksHere/EL6:_SL_6.x,_CentOS_6.x
+  40. http://optiportal.org/index.php/Special:RecentChangesLinked/EL6:_SL_6.x,_CentOS_6.x
+  41. http://optiportal.org/index.php/Special:SpecialPages
+  42. http://optiportal.org/index.php?title=EL6:_SL_6.x,_CentOS_6.x&printable=yes
+  43. http://optiportal.org/index.php?title=EL6:_SL_6.x,_CentOS_6.x&oldid=97
+  44. http://optiportal.org/index.php/Optiportals:Privacy_policy
+  45. http://optiportal.org/index.php/Optiportals:About
+  46. http://optiportal.org/index.php/Optiportals:General_disclaimer
+  47. http://www.mediawiki.org/
+
+   Hidden links:
+  48. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x
+  49. http://optiportal.org/index.php/EL6:_SL_6.x,_CentOS_6.x
+  50. http://optiportal.org/index.php/Main_Page
