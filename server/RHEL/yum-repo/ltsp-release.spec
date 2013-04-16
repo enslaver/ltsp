@@ -1,6 +1,8 @@
 Name:		ltsp-release
 Version:	5
-Release:	8
+%define _datestamp .20130414.19
+#Release:        9%{_datestamp}%{?dist}
+Release:	9%{?dist}
 Summary:	RPM Package containing LTSP repository and GPG key
 
 Group:		User Interface/Desktops

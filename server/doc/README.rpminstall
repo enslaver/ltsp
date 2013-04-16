@@ -3,9 +3,15 @@ Please run all commands as root or using sudo command
 
 On your LTSP server you must have epel-release repo's setup from http://fedoraproject.org/wiki/EPEL
 
+
 Then you can install the LTSP repo using this command:
-rpm --import http://mirror.ancl.hawaii.edu/~k12linux/rpm/RPM-GPG-KEY-ltsp
-rpm -Uvh http://mirror.ancl.hawaii.edu/~k12linux/rpm/ltsp-release-5.noarch.rpm
+For EL6:
+rpm --import http://ltsprepo.s3.amazonaws.com/rpm/RPM-GPG-KEY-ltsp
+rpm -Uvh http://ltsprepo.s3.amazonaws.com/rpm/el6/x86_64/ltsp-release-5-9.el6.noarch.rpm
+
+For Fedora 18:
+rpm --import http://ltsprepo.s3.amazonaws.com/rpm/RPM-GPG-KEY-ltsp
+rpm -Uvh http://ltsprepo.s3.amazonaws.com/rpm/fc18/x86_64/ltsp-release-5-9.fc18.noarch.rpm
 
 To install the server simply run:
 yum install ltsp-server
