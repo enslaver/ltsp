@@ -1,0 +1,6 @@
+#Disable Multi-user Login Screen:
+
+gconftool-2 --direct --config-source \
+xml:readwrite:/etc/gconf/gconf.xml.mandatory --type Boolean --set \
+/apps/gdm/simple-greeter/disable_user_list True
+

@@ -1,0 +1,6 @@
+case "$MODE" in
+    finalization)
+	setarch $ARCH ltsp-chroot -a $ARCH /usr/sbin/ltsp-rewrap-latest-kernel
+        /usr/sbin/ltsp-update-kernels >/dev/null 2>&1
+        ;;
+esac

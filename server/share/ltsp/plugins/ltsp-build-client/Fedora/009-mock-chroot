@@ -1,0 +1,118 @@
+#set -x
+
+case "$MODE" in
+    commandline)
+        add_option "release"  "`eval_gettext "Release-Version-Arch for full list use --list. (default: epel-6-i386)"`" "advanced" "true"
+        add_option "list"  "`eval_gettext "List available releases and arch's to choose from"`" "advanced" "false"
+    ;;
+    configure)
+        MOCKFILE="epel-6-i386"
+        if [ -n "$option_list_value" ]; then
+	   for files in /etc/mock/*.cfg; do 
+              OLD=$IFS
+              IFS="."
+              echo ${files/*mock\// }|sed 's/cfg//g'|grep -v default
+           done
+           IFS=$OLD
+           exit 0
+        fi
+
+        if [ -f "/etc/mock/$option_release_value.cfg" ]; then
+            MOCKFILE=$option_release_value
+        elif [ -n "$option_release_value" ]; then
+            echo "You specified an invalid build target for the client, for a list use $0 --list"
+            exit 0
+        fi
+        OLD=$IFS IFS="-"; read -r VENDORDEF RELEASE ARCH <<< "$MOCKFILE"; IFS=$OLD
+        [ ! -d $BASE/mock ] && mkdir -p $BASE/mock
+        /usr/sbin/usermod -a -G mock nobody
+        getent passwd mockbuild >/dev/null 2>&1 || /usr/sbin/useradd mockbuild
+	mkdir -p /opt/ltsp/mock/cache && chown mockbuild /opt/ltsp/mock/cache
+        BUILD=${ARCH:-i686}
+        ARCH=${ARCH:-$(echo $BUILD | sed -e s/i.86/i386/)}
+        [ "$VENDORDEF" == "epel" ] && mydist=${VENDORDEF/epel/el}$RELEASE
+        [ "$VENDORDEF" == "fedora" ] && mydist=${VENDORDEF/fedora/fc}$RELEASE
+        cat /etc/mock/$MOCKFILE.cfg |sed 's/^\"\"\"//' > /etc/ltsp/mock/$MOCKFILE.cfg
+        cat /etc/ltsp/mock/ltsp.cfg |sed -e "s,DIST,$mydist,g" |sed -e "s,ARCH,$BUILD,g" >> /etc/ltsp/mock/$MOCKFILE.cfg
+        #[ "$VENDORDEF" == "epel" ] && sed -i 's/buildsys-build/Base/g' /etc/ltsp/mock/$MOCKFILE.cfg
+        n=$(tail -n +32 ${BASH_SOURCE[0]}|grep MOCK_CMD|wc -l)
+        i=0
+        MOCK="setarch $BUILD /usr/bin/mock -r $MOCKFILE \
+             --target=$BUILD --configdir=/etc/ltsp/mock --arch=$BUILD"
+        MOCK_CMD() {
+           : $((i=i+1))
+           PCT=$(( 100*i/n ))
+           show_percent
+           if [ -n "$option_noprogress_value" ]; then
+              $MOCK "$@" 2>&1
+           else
+              $MOCK "$@"  >/dev/null 2>&1
+           fi
+           if [ "$?" -gt 0 ]; then
+              echo
+              echo "Error encountered running command: $MOCK $@ "
+              echo "check $BASE/mock/$MOCKFILE/result/root.log for more"
+              echo "detailed information"
+              echo
+              exit 1
+           fi
+        }
+
+    ;;
+    install)
+        # --shell interactive
+        # --chroot non-interactive
+
+        MOCK_CMD --init 
+        MOCK_CMD --shell "touch /etc/ltsp_chroot"
+        MOCK_CMD --chroot "rm -f /var/lib/rpm/__db*"
+        case $MOCKFILE in
+        epel-6-*)
+           MOCK_CMD --install @X\ Window\ System
+           # Junk Packages
+           MOCK_CMD --remove PackageKit mpage minicom dos2unix finger ftp jwhois rsh telnet system-config-rootpassword system-config-services policycoreutils-gui NetworkManager NetworkManager-gnome microcode_ctl
+           # Fix to reinstall dracut
+           MOCK_CMD --install ltsp-client ldm ldminfod nbd ltspfs plymouth-theme-rings tftp dracut dracut-network dracut-tools dracut-kernel plymouth xterm x2goclient freerdp fuse-sshfs pciutils busybox xterm pulseaudio e2fsprogs ltsp-release epel-release ldminfod libssh4 pulseaudio xorg-x11-drivers xorg-x11-fonts\*
+        ;;
+        fedora-18-*)
+           MOCK_CMD --install @mate
+           MOCK_CMD --remove PackageKit mpage minicom dos2unix finger ftp jwhois rsh telnet system-config-rootpassword system-config-services policycoreutils-gui NetworkManager NetworkManager-gnome microcode_ctl
+           # Fix to reinstall dracut
+           MOCK_CMD --install ltsp-client ldm ldminfod nbd ltspfs plymouth-theme-rings tftp dracut dracut-network dracut-tools fedup-dracut plymouth fedup-dracut-plymouth xterm x2goclient freerdp fuse-sshfs pciutils busybox xterm pulseaudio e2fsprogs ltsp-release ldminfod libssh4 pulseaudio xorg-x11-drivers xorg-x11-fonts\*
+	;;
+        *)
+           echo "Invalid release specified or release not yet supported."
+        ;;
+        esac 
+   ;;
+   after-install)
+        MOCK_CMD --shell "[ \-f /usr/share/ltsp/ltsp-init-common ] || echo LTSP client not installed"
+        MOCK_CMD --copyin /etc/ltsp/dracut/sysconfig-mkinitrd /etc/sysconfig/mkinitrd
+        MOCK_CMD --copyin /etc/ltsp/dracut/ltsp-dracut.conf /etc/dracut.conf.d
+	MOCK_CMD --copyin /etc/ltsp/dracut/ltsp-dracut.conf /usr/share/ltsp/template/sysconfig-dracut
+        MOCK_CMD --copyin /etc/ltsp/dracut/sysconfig-dracut-skip-first-time /etc/dracut.conf.d/skip-first-time.conf
+        MOCK_CMD --copyin /etc/ltsp/dracut/sysconfig-network /etc/sysconfig/network
+        MOCK_CMD --copyin /etc/ltsp/dracut/ifcfg-eth0 /etc/sysconfig/network-scripts/ifcfg-eth0
+        MOCK_CMD --copyin /etc/ltsp/dracut/ltsp-postinst.d /etc/kernel/postinst.d/ltsp
+	echo "RUN_FIRSTBOOT=NO" > $ROOT/etc/sysconfig/firstboot
+        MOCK_CMD --shell "chmod 0755 /etc/kernel/postinst.d/ltsp"
+        MOCK_CMD --shell "/usr/share/ltsp/ltsp-chroot-setup"
+        # TODO: Customize user defined cache dir
+        if [ -d "$BASE/mock/$MOCKFILE/root" ]; then
+           mv $BASE/mock/$MOCKFILE/root $ROOT
+           ln -s $ROOT $BASE/mock/$MOCKFILE/root
+           cp $ROOT/etc/skel/.bash* $ROOT/root/
+           cat << EOF >> $ROOT/root/.bashrc
+PS1="<LTSP $MOCKFILE> [\u@\h \W]\\\\$ "
+EOF
+           return 0
+        else
+           echo
+           echo "There was an error, check $BASE/mock/$MOCKFILE/result/root.log"
+           echo "for details"
+           exit 1
+        fi
+
+    ;;
+
+esac

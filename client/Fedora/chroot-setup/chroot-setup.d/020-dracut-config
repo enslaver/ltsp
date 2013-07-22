@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if [ -f /etc/dracut.conf ]; then
+   echo Generating initramfs
+   [ -e "/usr/share/ltsp/template/sysconfig-dracut" ] && cp /usr/share/ltsp/template/sysconfig-dracut /etc/dracut.conf.d/ltsp-dracut.conf
+   NAME=`ls /boot/vmlinuz-* |sed 's/vmlinuz-//' | sort -nr | head -n1 | xargs basename`
+   unset DRACUTARG
+   [ -x /sbin/dracut ] && DRACUTARG=--dracut
+   /sbin/dracut -f 2>/dev/null
+   /sbin/new-kernel-pkg --mkinitrd $DRACUTARG --add-plymouth-initrd --install $NAME 2>/dev/null
+   /sbin/new-kernel-pkg --rpmposttrans $NAME 2>/dev/null
+else
+   echo Warning: Dracut not installed or no /etc/dracut.conf found
+fi
+

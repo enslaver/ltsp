@@ -1,0 +1,8 @@
+# Disable Gnome notifications
+gconftool-2 -s \
+/apps/panel/global/tooltips_enabled --type bool false
+
+# Disable lockscreen
+gconftool-2 -s \
+/apps/panel/global/disable_lock_screen --type bool true
+

@@ -1,0 +1,11 @@
+case "$MODE" in
+    after-install)
+      PCT=100
+      show_percent
+      #
+	ok_message "The client has been installed successfully. Now we must
+	update the server to boot the thin client image. After that is complete 
+	have a look at /var/lib/tftpboot/ltsp/i386/lts.conf and verify
+	everything is setup the way you want."
+    ;;
+esac

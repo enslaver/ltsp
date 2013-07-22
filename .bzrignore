@@ -1,0 +1,10 @@
+messages.mo
+*.tar.gz
+*.tar.bz2
+*.rpm
+rpmbuild.log
+ltsp.spec
+junk.sh
+build.sh
+.git
+
