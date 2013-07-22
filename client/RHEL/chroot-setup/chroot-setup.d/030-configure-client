@@ -3,7 +3,7 @@
 # Disable services we don't want
 for service in ConsoleKit avahi-daemon crond cups exim gpm iptables ip6tables \
     iscsid kudzu lvm2-monitor mcstrans mdmonitor nfs NetworkManager named\
-    pcscd rpcbind rpcgssd rpcidmapd rpcsvcgssd kdump nfslock; do
+    pcscd rpcgssd rpcidmapd rpcsvcgssd kdump nfslock; do
     if [ ! -e /etc/init.d/$service ]; then
         continue
     fi
@@ -12,7 +12,7 @@ for service in ConsoleKit avahi-daemon crond cups exim gpm iptables ip6tables \
 done
 
 # Enable services we do want
-for service in haldaemon messagebus rsyslog udev-post ltsp-core ; do
+for service in haldaemon messagebus rsyslog udev-post ltsp-core rpcbind nfslock epoptes-client; do
     if [ ! -e /etc/init.d/$service ]; then
         continue
     fi
@@ -29,10 +29,11 @@ done
 # Link /etc/mtab to /proc/mounts
 # This is not perfect, but it enables fuse mounts to work.
 rm -f /etc/mtab 2>/dev/null
-ln -sf /proc/mounts /etc/mtab
+#ln -sf /proc/mounts /etc/mtab
+cat /proc/mounts > /etc/mtab
 
 # Files to silence warning messages
-touch /etc/alsa/asound.state
+#touch /etc/alsa/asound.state
 touch /etc/asound.state
 
 # Silence /etc/mtab rwtab error message during bootup
@@ -43,12 +44,13 @@ sed -i 's/^rm -f \/etc\/mtab/#rm -f \/etc\/mtab/' /etc/rc.d/rc.sysinit
 
 # Silence local filesystems mount errors during bootup
 sed -i '/^sysfs/d' /etc/fstab
-#sed -i '/sysroot/d' /etc/mtab
-#sed -i '/unionfs/d' /etc/mtab
+sed -i '/sysroot/d' /etc/mtab
+sed -i '/unionfs/d' /etc/mtab
+sed -i '/cgroup/d' /etc/mtab
 
 # F10+: install default boot-duration so plymouth can guess the startup progress bar better
-if [ -e /usr/share/plymouth/boot-duration ]; then
-    cp /usr/share/ltsp/template/plymouth-default-boot-duration /usr/share/plymouth/boot-duration
+if [ -e /usr/share/plymouth/default-boot-duration ]; then
+    cp /usr/share/ltsp/template/default-boot-duration /usr/share/plymouth/default-boot-duration
 fi
 
 # Allow clean shutdown to complete when rootfs is mounted on a nbd or iscsi block device

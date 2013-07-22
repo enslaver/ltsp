@@ -2,7 +2,7 @@
 # description: NBD root daemon
 service nbdrootd
 {
-	disable		= yes
+	disable		= no
 	type		= UNLISTED
 	flags		= KEEPALIVE
 	socket_type     = stream

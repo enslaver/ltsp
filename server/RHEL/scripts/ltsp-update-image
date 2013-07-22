@@ -180,7 +180,6 @@ generate_image() {
         test -d "$BASE/$chroot" && chroot="$BASE/$chroot"
     fi
     test -d "$chroot" || die "Chroot $chroot does not exist."
-    test -d "$chroot/etc" || die "Skipping $chroot"
     name=${chroot##*/}
     name=${name%.*}
     # If the chroot has no name part, e.g. /, name it after the host arch
@@ -221,11 +220,13 @@ generate_image() {
             mv "$imgdir/$name.img" "$imgdir/$name.img.old"
         fi
         mv "$imgdir/$name.img.tmp" "$imgdir/$name.img"
-        if [ -f "/etc/xinetd.d/nbdrootd" ]; then
-           owner=$(grep user "/etc/xinetd.d/nbdrootd"|awk -F= '{ print $2 }')
-           chown $owner $imgdir && chown $owner $imgdir/$name.img
-        fi 
     fi
+
+    if [ -f /etc/xinetd.d/nbdrootd ]; then
+        owner=$(grep user /etc/xinetd.d/nbdrootd|awk -F= '{ print $2 }')
+        chown $owner $imgdir && chown $owner $imgdir/$name.img
+    fi 
+
 
     PREFER_NBD_IMAGE="$REVERT" ltsp-update-kernels ${BASE:+-b "$BASE"} "$name"
 
@@ -282,10 +283,9 @@ BASE=${BASE:-/opt/ltsp}
 BASE=${BASE%/}
 if [ -z "$CONFIG_NBD" ]; then
     if [ -d /etc/nbd-server/conf.d ] &&
-        [ -n "$(find /etc/xinetd.d/ -type f -name 'nbdrootd')" ]
+        [ -n "$(find /etc/nbd-server/conf.d/ -type f -name 'ltsp_*.conf' ! -name ltsp_swap.conf)" ]
     then
         CONFIG_NBD=true
-        /sbin/chkconfig nbdrootd on && /sbin/service xinetd.d restart
     fi
     if [ -z "$CONFIG_NBD" ]; then
         if grep -qsr ^/opt/ltsp /etc/exports /etc/exports.d/; then
@@ -304,13 +304,5 @@ fi
 test $# -gt 0 || die "No chroots found in $BASE"
 
 for chroot in "$@"; do
-     generate_image "$chroot"
+    generate_image "$chroot"
 done
-
-# should return 0 (false) if it finds on
-if [ `/sbin/chkconfig --list nbdrootd | grep on >/dev/null` ]; then
-/sbin/chkconfig nbdrootd on
-/sbin/service xinetd restart
-fi
-
-

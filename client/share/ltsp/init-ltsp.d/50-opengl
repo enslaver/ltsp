@@ -1,4 +1,5 @@
 if boolean_is_true "$LDM_DIRECTX" && ! boolean_is_true "$LTSP_FATCLIENT"; then
     # Work around LP bug #1072711
     rm -f /usr/lib/i386-linux-gnu/dri/nouveau_vieux_dri.so
+    #rm -f /usr/lib/xorg/modules/drivers/nouveau_drv.so
 fi

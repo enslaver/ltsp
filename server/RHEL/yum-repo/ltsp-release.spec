@@ -1,6 +1,6 @@
 Name:		ltsp-release
 Version:	5
-Release:	8
+Release:	9
 Summary:	RPM Package containing LTSP repository and GPG key
 
 Group:		User Interface/Desktops

@@ -208,7 +208,7 @@ generate_image() {
 
         test -f /etc/ltsp/ltsp-update-image.excludes && EXCLUDE_FILE="/etc/ltsp/ltsp-update-image.excludes"
         test -x /usr/bin/nice && nice=nice || unset nice
-        test -x /usr/bin/ionice && /usr/bin/ionice -c3 true 2>/dev/null && ionice=ionice || unset ionice
+        test -x /usr/bin/ionice && /usr/bin/ionice -c3 true 2>/dev/null && ionice="ionice -c3" || unset ionice
         if ! $nice $ionice mksquashfs "$cu_chroot" "$imgdir/$name.img.tmp" \
             -no-recovery -noappend -wildcards ${EXCLUDE_FILE:+-ef "$EXCLUDE_FILE"} \
             ${EXCLUDE:+-e "$EXCLUDE"} ${NO_COMPRESS:+-noF -noD -noI -no-exports}
@@ -293,7 +293,7 @@ fi
 # Chroots can be specified in the command line. If not, update all of them.
 if [ $# -eq 0 ]; then
     set -- $(find "$BASE/" -mindepth 1 -maxdepth 1 -type d ! -name images \
-        -printf "%f\n")
+        ! -name lost+found -printf "%f\n")
 fi
 test $# -gt 0 || die "No chroots found in $BASE"
 

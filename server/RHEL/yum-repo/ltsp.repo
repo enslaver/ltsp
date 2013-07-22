@@ -11,7 +11,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-ltsp
 [ltsp-testing]
 name=LTSP testing - $basearch
 #baseurl=http://ltsprepo.s3.amazonaws.com/rpm/el6-testing/$basearch/
-mirrorlist=http://repo.inode0.com/mirrorlist.php?dist=el6&arch=$basearch&repo=ltsp
+mirrorlist=http://repo.inode0.com/mirrorlist.php?dist=el6-testing&arch=$basearch&repo=ltsp
 enabled=0
 gpgcheck=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-ltsp

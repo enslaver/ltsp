@@ -42,3 +42,18 @@ BUILDING THE CLIENT
    This will give you the options you can pass to the program that builds the chroot for the client
 2. If you'd like to go with the recommended defaults simply run: ltsp-build-client
 3. To setup services just run: ltsp-server-initialize
+
+TROUBLESHOOTING
+
+If you are having issues with the ltsp-build-client make sure you clean the mock and yum cache beforehand:
+
+# yum clean all
+# rm -rf /opt/ltsp/mock/epel-*
+# yum update ltsp-server
+
+A good way to troubleshoot the ltsp-build-client script is by using the debug and noprogress flags, that way you can watch it as it goes:
+
+i.e.
+
+# ltsp-build-client --release epel-6-i386 --debug --noprogress
+

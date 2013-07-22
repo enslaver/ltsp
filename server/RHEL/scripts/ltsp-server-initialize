@@ -32,7 +32,7 @@ fi
 
 grep $DEV /etc/sysconfig/network-scripts/ifcfg-*
 ERROR=$((ERROR+$?))
-CFGFILE=`grep -H eth1 /etc/sysconfig/network-scripts/ifcfg-*|awk -F: '{ print \$1 }'`
+CFGFILE=`grep -H $DEV /etc/sysconfig/network-scripts/ifcfg-*|awk -F: '{ print \$1 }'`
 
 
 if [ "$ERROR" -gt 0 ]; then

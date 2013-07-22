@@ -2,7 +2,7 @@
 # description: NBD swap daemon
 service nbdswapd
 {
-	disable		= yes
+	disable		= no
 	type		= UNLISTED
 	flags		= KEEPALIVE
 	socket_type     = stream
